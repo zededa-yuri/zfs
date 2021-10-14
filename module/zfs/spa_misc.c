@@ -1765,7 +1765,8 @@ spa_get_worst_case_asize(spa_t *spa, uint64_t lsize)
 {
 	if (lsize == 0)
 		return (0);	/* No inflation needed */
-	return (MAX(lsize, 1 << spa->spa_max_ashift) * spa_asize_inflation);
+	return (MAX(lsize, 1 << spa->spa_max_ashift)
+	    * MIN(spa->spa_worst_alloc, spa_asize_inflation));
 }
 
 /*

@@ -103,6 +103,7 @@ unsigned long zfs_dirty_data_max = 0;
 unsigned long zfs_dirty_data_max_max = 0;
 int zfs_dirty_data_max_percent = 10;
 int zfs_dirty_data_max_max_percent = 25;
+unsigned long zfs_write_smoothing = 0;
 
 /*
  * If there's at least this much dirty data (as a percentage of
@@ -132,6 +133,7 @@ int zfs_delay_min_dirty_percent = 60;
  * multiply in dmu_tx_delay().
  */
 unsigned long zfs_delay_scale = 1000 * 1000 * 1000 / 2000;
+unsigned long zfs_smoothing_scale = 1000 * 1000 * 1000 / 20000;
 
 /*
  * This determines the number of threads used by the dp_sync_taskq.
@@ -900,14 +902,15 @@ dsl_pool_need_dirty_delay(dsl_pool_t *dp)
 	    zfs_dirty_data_max * zfs_delay_min_dirty_percent / 100;
 	uint64_t dirty_min_bytes =
 	    zfs_dirty_data_max * zfs_dirty_data_sync_percent / 100;
-	uint64_t dirty;
 
 	mutex_enter(&dp->dp_lock);
-	dirty = dp->dp_dirty_total;
+	uint64_t dirty = dp->dp_dirty_total;
+	hrtime_t last_delay = dp->dp_last_smooth;
 	mutex_exit(&dp->dp_lock);
 	if (dirty > dirty_min_bytes)
 		txg_kick(dp);
-	return (dirty > delay_min_bytes);
+
+	return (dirty > delay_min_bytes || last_delay > gethrtime());
 }
 
 void
@@ -1392,6 +1395,9 @@ ZFS_MODULE_PARAM(zfs, zfs_, delay_min_dirty_percent, INT, ZMOD_RW,
 ZFS_MODULE_PARAM(zfs, zfs_, dirty_data_max, ULONG, ZMOD_RW,
 	"Determines the dirty space limit");
 
+ZFS_MODULE_PARAM(zfs, zfs_, write_smoothing, ULONG, ZMOD_RW,
+	"How long should we smooth write after last delay (sec)");
+
 /* zfs_dirty_data_max_max only applied at module load in arc_init(). */
 ZFS_MODULE_PARAM(zfs, zfs_, dirty_data_max_max, ULONG, ZMOD_RD,
 	"zfs_dirty_data_max upper bound in bytes");
@@ -1401,6 +1407,9 @@ ZFS_MODULE_PARAM(zfs, zfs_, dirty_data_sync_percent, INT, ZMOD_RW,
 
 ZFS_MODULE_PARAM(zfs, zfs_, delay_scale, ULONG, ZMOD_RW,
 	"How quickly delay approaches infinity");
+
+ZFS_MODULE_PARAM(zfs, zfs_, smoothing_scale, ULONG, ZMOD_RW,
+	"Delay smoothing scale");
 
 ZFS_MODULE_PARAM(zfs, zfs_, sync_taskq_batch_pct, INT, ZMOD_RW,
 	"Max percent of CPUs that are used to sync dirty data");

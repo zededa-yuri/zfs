@@ -35,6 +35,7 @@
 #include <sys/zio_checksum.h>
 #include <sys/zio_compress.h>
 #include <sys/dmu.h>
+#include <sys/dmu_objset.h>
 #include <sys/dmu_tx.h>
 #include <sys/zap.h>
 #include <sys/zil.h>
@@ -1761,12 +1762,21 @@ spa_freeze_txg(spa_t *spa)
  * block anyway.
  */
 uint64_t
-spa_get_worst_case_asize(spa_t *spa, uint64_t lsize)
+spa_get_worst_case_asize(spa_t *spa, objset_t *os, uint64_t lsize)
 {
+	ASSERT3U(spa->spa_worst_alloc, >, 0);
 	if (lsize == 0)
 		return (0);	/* No inflation needed */
-	return (MAX(lsize, 1 << spa->spa_max_ashift)
-	    * MIN(spa->spa_worst_alloc, spa_asize_inflation));
+
+	uint64_t inflation = roundup(lsize, (1 << spa->spa_max_ashift) *
+	    spa->spa_worst_alloc);
+
+	if (os != NULL)
+		inflation *= os->os_copies;
+	else
+		inflation *= SPA_DVAS_PER_BP;
+
+	return (inflation);
 }
 
 /*

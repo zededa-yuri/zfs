@@ -338,12 +338,10 @@ char *zfs_deadman_failmode = "wait";
  * The worst case is single-sector max-parity RAID-Z blocks, in which
  * case the space requirement is exactly (VDEV_RAIDZ_MAXPARITY + 1)
  * times the size; so just assume that.  Add to this the fact that
- * we can have up to 3 DVAs per bp, and one more factor of 2 because
- * the block may be dittoed with up to 3 DVAs by ddt_sync().  All together,
- * the worst case is:
- *     (VDEV_RAIDZ_MAXPARITY + 1) * SPA_DVAS_PER_BP * 2 == 24
+ * we can have up to 3 DVAs per bp.  All together, the worst case is:
+ *     (VDEV_RAIDZ_MAXPARITY + 1) * SPA_DVAS_PER_BP == 12
  */
-int spa_asize_inflation = 24;
+int spa_asize_inflation = 12;
 
 /*
  * Normally, we don't allow the last 3.2% (1/(2^spa_slop_shift)) of space in

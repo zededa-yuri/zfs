@@ -92,13 +92,21 @@ for type in "" "mirror" "raidz2" "draid"; do
 
 	typeset availspace=$(get_prop available $TESTPOOL)
 	typeset fill_mb=$(( floor(availspace * 0.90 / 1024 / 1024) ))
+	# We can't fill less than VDEV_MAX_MB and expect the vdev to be full
+	if [[ $fill_mb -lt $VDEV_MAX_MB ]]; then
+		fill_mb=$VDEV_MAX_MB
+	fi
 
 	# Fill the pool, verify the vdevs are no longer sparse.
 	file_write -o create -f /$TESTPOOL/file -b 1048576 -c $fill_mb -d R
+	sync_pool $TESTPOOL
+	sync
 	verify_vdevs "-ge" "$VDEV_MAX_MB" $VDEVS
 
 	# Remove the file, wait for trim, verify the vdevs are now sparse.
 	log_must rm /$TESTPOOL/file
+	sync_pool $TESTPOOL
+	sync
 	wait_trim_io $TESTPOOL "ind" 64
 	verify_vdevs "-le" "$VDEV_MIN_MB" $VDEVS
 

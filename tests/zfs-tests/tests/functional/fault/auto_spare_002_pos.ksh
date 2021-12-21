@@ -70,6 +70,7 @@ for type in "mirror" "raidz" "raidz2"; do
 
 	# 3. Write a file to the pool to be read back
 	log_must dd if=/dev/urandom of=$TESTFILE bs=1M count=64
+	sync_pool $TESTPOOL
 
 	# 4. Inject CHECKSUM ERRORS on read with a zinject error handler
 	log_must zinject -d $FAULT_FILE -e corrupt -f 50 -T read $TESTPOOL

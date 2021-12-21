@@ -61,6 +61,7 @@ log_must zfs create $fs/subfs
 
 mntpnt=$(get_prop mountpoint $fs/subfs)
 log_must mkfile 20M $mntpnt/$TESTFILE
+sync_pool $TESTPOOL
 
 typeset -i used quota refquota
 used=$(get_prop used $fs)
